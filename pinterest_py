@@ -1,0 +1,248 @@
+import os
+import requests
+import time
+import json
+import pandas as pd
+from google.oauth2.service_account import Credentials
+from google.cloud import bigquery
+
+# Salve o conteúdo JSON fornecido em um arquivo chamado 'credentials.json'
+credentials_json = {
+    "type": "service_account",
+    "project_id": "warm-shade-424621-r4",
+    "private_key_id": "41005db643b0f14bed1aae7d4d42ee50377dc683",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCiYEhfj2UrIonr\nX+v2N+zYCWJ8hRxbtFT1QKqGN2iaZV28Rm1d4CKoWwbcxPEROC/oxCQ3jmMnDAwr\ns4gliC1wA5sfYZfKLFyxUjs83qP3tcMJoS4NbzPO/ruEtHJrpcq/MhiEZhdijSbe\nijeXvzEZYm5Ei7pmF3xw5GBuwQ75/FkT3pLOiXniUG6xp9QYA/E4+TJZCSTohE6F\nxvpCD9Js87KBIUzcluUqsP6WdGVmLlhat1XjuBjdR9qjsvZNWU8BohCFhhLAYBgo\n9+etolnn8OenscjZPcT7q+UKm2JrTDanUsUlNCTovGoOmOW1Q2i1rjA7F+SKmsTw\nIb/UQO0FAgMBAAECggEAAxt7lxSRQjuQJHMlUATETA1rQehxi/xjTymJzzVlPjso\nCY/WzPVFRIUwGEPOkd6fkBac03wD6r3gx79Q9i2TzQZ3Tqjun4hXd8ST7KIdb4Ke\nH7jivuVnZOkxYSSWN01+F/LspC/995Ktm+miObhcx1hqYCEaaT9perxBb4J997Ze\n63qejAAxgj6MWjtuH+920h2LSRoKPEpFmUwl2bVo073o8yhDU+14fxCob/gD/Pmm\n93Je+e46funElGPBUCgOUor1q7zUCfETJCTbTfhGQThx9g9cWHvYIWRhX7lhvYpy\nxRJWDYhfDBYIr8ieYTgUL1P03rN3rllstDRHWuOnEQKBgQDUCBLpZE88HIxCfeXp\nQ6LC518A7dOCaXiH/AkQhdujd8h8S/X+MMRHsfnmiQZg/wuxo64r62FZ0B15/jMp\nQ5kLpcv3tF2i8nSppwfxC/37CF3ETZq1DoQzXBtprdNcBApx8vZHCkyFyYCGeqep\nRteRLF36QwWqgc22BU3qaBD1nQKBgQDEDDIf4cIu2blvxs1PJdbWbdUaDSVfV3H+\nfJgExrsiGe4SpKSgHCnkSzL1xL0fUIR4bXvcYIi8krU/lLojQzzHxza0Nr3dKEmU\n+TYw6LGO+oMCdB4jgb9UM/27zxH1IxOS7ebCGovJE8lj54BBq2S3pQtzPaQg1Df4\n2JipMkisiQKBgQDKtsFl9Cow3VZXx8hE4Q4+aziQSdCa8T10PUlpS6D2w3GhLHqO\nQI+XwBedCcpYd971QfkmMk8LsAZOePLu85rh4OyF8SJIxKc2/+N+2KlFFPWY1V0g\n1zUbaWcn/TGC2rYlxVUiDD2m90Ryzdd35qv4NsPOnb9QCfPjn2SjxETanQKBgQC+\ni+QEHNcx1ihoPd+7N9nyHFptsa1LV6DSaqMOsWGdKXq94AyqGfWVkIl9WrU+xHGc\n4zzp22HLdwR3QcURFP70ZeoDitlLJScvhnFnZCOABnhjYB0TAb7GxqmtavvXOTqD\nKnuI2WhYDcVGNvHv4fhIjj/syFLIHbwxP8RRXzBHkQKBgA0ojZX2trxxT332exOv\nnubmK8teL9UToxjQHaf4OR+2NoB6+n3wEMj48E2gHdoOqbciuf9KqaVyGFsAu1CD\nkUD2BSKBqWWYybZ0fknXh8zc15qLiPOtaZ5gDiLfTXwQYtBYny8x/oq114Ozszlb\nyxGx5pmH4EzsOws4Vs6dbRur\n-----END PRIVATE KEY-----\n",
+    "client_email": "api-bq-pintereste@warm-shade-424621-r4.iam.gserviceaccount.com",
+    "client_id": "101466753460565096738",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/api-bq-pintereste@warm-shade-424621-r4.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+}
+
+# Salvar o JSON em um arquivo
+with open("credentials.json", "w") as f:
+    json.dump(credentials_json, f)
+
+# Definir a variável de ambiente para as credenciais do Google Cloud
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
+
+# Configurações
+access_token = 'pina_AEAU5ZIWAAZTEAYAGDAGCDCP2XDU7EABACGSOO77UMHWYFKABL7D5YQR3G3AZ3K72NFEYKZRCZE4T6274LI5SEHOUQTCCXQA'
+ad_account_id = '549762346686'
+project_id = 'warm-shade-424621-r4'
+dataset_id = 'API_Pinterest'
+table_id = 'pinterest_ads'
+credentials_path = 'credentials.json'
+
+# Função para carregar credenciais do BigQuery
+def load_credentials(credentials_path):
+    return Credentials.from_service_account_file(credentials_path)
+
+# Função para inserir dados no BigQuery a partir de um DataFrame
+def insert_df_to_bigquery(df, project_id, dataset_id, table_id, credentials_path):
+    credentials = load_credentials(credentials_path)
+    client = bigquery.Client(credentials=credentials, project=project_id)
+    table_ref = client.dataset(dataset_id).table(table_id)
+
+    job_config = bigquery.LoadJobConfig(
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+        schema=[
+            bigquery.SchemaField("ID", "STRING"),
+            bigquery.SchemaField("CAMPAIGN_ID", "STRING"),
+            bigquery.SchemaField("DATE", "DATE"),
+            bigquery.SchemaField("CAMPAIGN_NAME", "STRING"),
+            bigquery.SchemaField("TOTAL_CONVERSIONS", "INT64"),
+            bigquery.SchemaField("CAMPAIGN_OBJECTIVE_TYPE", "STRING"),
+            bigquery.SchemaField("OUTBOUND_CLICK_1", "INT64"),
+            bigquery.SchemaField("OUTBOUND_CLICK_2", "INT64"),
+            bigquery.SchemaField("PAID_IMPRESSION", "INT64"),
+            bigquery.SchemaField("SPEND_IN_DOLLAR", "FLOAT"),
+            bigquery.SchemaField("TOTAL_WEB_CHECKOUT_VALUE_IN_MICRO_DOLLAR", "FLOAT")
+        ]
+    )
+
+    # Convertendo a coluna ID para string antes de enviar ao BigQuery
+    df['ID'] = df['ID'].astype(str)
+
+    job = client.load_table_from_dataframe(df, table_ref, job_config=job_config)
+    job.result()
+    print("Dados do DataFrame inseridos com sucesso no BigQuery")
+
+    # Verificar se os dados foram realmente inseridos
+    query = f"SELECT * FROM `{project_id}.{dataset_id}.{table_id}` ORDER BY DATE DESC LIMIT 5"
+    query_job = client.query(query)
+    results = query_job.result()
+
+    print("Dados recentemente inseridos no BigQuery:")
+    for row in results:
+        print(row)
+
+# Função para criar um relatório
+def create_report(access_token, ad_account_id, campaign_ids, columns_str, start_date, end_date, granularity="DAY"):
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'level': 'CAMPAIGN',
+        'campaign_ids': campaign_ids,
+        'columns': columns_str.split(','),
+        'granularity': granularity,
+        'report_format': 'JSON'
+    }
+
+    url = f'https://api.pinterest.com/v5/ad_accounts/{ad_account_id}/reports'
+    response = requests.post(url, headers=headers, json=payload)
+
+    if response.status_code == 200:
+        token = response.json()['token']
+        print(f"Relatório criado com sucesso! Token do relatório: {token}")
+        return token
+    else:
+        print(f"Erro {response.status_code}: {response.json()}")
+        return None
+
+# Função para obter o link de download do relatório usando o token
+def get_report_download_link(access_token, ad_account_id, token):
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+
+    url = f'https://api.pinterest.com/v5/ad_accounts/{ad_account_id}/reports?token={token}'
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        download_link = response.json().get('url')
+        if download_link:
+            print(f"Link de download do relatório: {download_link}")
+            return download_link
+        else:
+            print("Link de download não encontrado.")
+            return None
+    else:
+        print(f"Erro {response.status_code}: {response.json()}")
+        return None
+
+# Função para processar o JSON e transformá-lo em um DataFrame
+def process_report_json(report_json):
+    all_data = []
+    for campaign_id, records in report_json.items():
+        if isinstance(records, list):
+            for record in records:
+                record['CAMPAIGN_ID'] = str(campaign_id)
+                record.setdefault('PAID_IMPRESSION', 0)
+                record.setdefault('TOTAL_CONVERSIONS', 0)
+                record.setdefault('OUTBOUND_CLICK_1', 0)
+                record.setdefault('OUTBOUND_CLICK_2', 0)
+                record.setdefault('SPEND_IN_DOLLAR', 0.0)
+                record.setdefault('TOTAL_WEB_CHECKOUT_VALUE_IN_MICRO_DOLLAR', 0.0)
+                record['DATE'] = pd.to_datetime(record['DATE']).date()
+                all_data.append(record)
+
+    df = pd.DataFrame(all_data)
+
+    # Ajustar tipos de dados
+    df['CAMPAIGN_ID'] = df['CAMPAIGN_ID'].astype(str)
+    df['DATE'] = pd.to_datetime(df['DATE'])
+    df['CAMPAIGN_NAME'] = df['CAMPAIGN_NAME'].astype(str)
+    df['TOTAL_CONVERSIONS'] = df['TOTAL_CONVERSIONS'].astype(int)
+    df['CAMPAIGN_OBJECTIVE_TYPE'] = df['CAMPAIGN_OBJECTIVE_TYPE'].astype(str)
+    df['OUTBOUND_CLICK_1'] = df['OUTBOUND_CLICK_1'].astype(int)
+    df['OUTBOUND_CLICK_2'] = df['OUTBOUND_CLICK_2'].astype(int)
+    df['PAID_IMPRESSION'] = df['PAID_IMPRESSION'].astype(int)
+    df['SPEND_IN_DOLLAR'] = df['SPEND_IN_DOLLAR'].astype(float)
+    df['TOTAL_WEB_CHECKOUT_VALUE_IN_MICRO_DOLLAR'] = df['TOTAL_WEB_CHECKOUT_VALUE_IN_MICRO_DOLLAR'].astype(float)
+
+    return df
+
+# Função para adicionar IDs e ordenar os dados
+def add_ids_and_sort_data(data):
+    # Ordenar dados pela coluna 'DATE'
+    data = data.sort_values(by='DATE')
+
+    # Adicionar coluna 'ID' sequencialmente
+    data['ID'] = range(1, len(data) + 1)
+
+    return data
+
+# Função para verificar e adicionar novos dados
+def check_and_add_new_data(existing_data, new_data):
+    # Verificar IDs existentes
+    max_id = existing_data['ID'].max() if not existing_data.empty else 0
+
+    # Ordenar novos dados pela coluna 'DATE'
+    new_data = new_data.sort_values(by='DATE')
+
+    # Adicionar IDs únicos aos novos dados
+    new_data['ID'] = range(max_id + 1, max_id + 1 + len(new_data))
+
+    # Concatenar dados existentes com novos dados
+    updated_data = pd.concat([existing_data, new_data])
+
+    return updated_data
+
+# Função principal
+def main():
+    # Configurações de data
+    end_date = pd.to_datetime('today').strftime('%Y-%m-%d')
+    start_date = (pd.to_datetime('today') - pd.DateOffset(days=185)).strftime('%Y-%m-%d')
+
+    # IDs das campanhas
+    campaign_ids = [
+        '626752032888', '626752139234', '626743781049', '626744268973', '626744404091', '626744404095', '626744516935', '626744695343', '626745896270', '626745918402', '626746729111', '626746741756', '626746741789', '626746948490', '626748003895', '626748053161', '626748053178', '626748343775', '626748418504', '626748841189', '626749139760', '626743936582', '626743936693', '626744166578', '626744196063', '626748225496', '626748246793'
+        # Adicione todos os IDs necessários aqui
+    ]
+
+    # Colunas para recuperação
+    columns = [
+        "SPEND_IN_DOLLAR", "PAID_IMPRESSION", "CAMPAIGN_NAME", "CAMPAIGN_ID", "TOTAL_CONVERSIONS", "CAMPAIGN_OBJECTIVE_TYPE",
+        "OUTBOUND_CLICK_1", "OUTBOUND_CLICK_2", "TOTAL_WEB_CHECKOUT_VALUE_IN_MICRO_DOLLAR"
+    ]
+    columns_str = ",".join(columns)
+
+    # Criar o relatório
+    token = create_report(access_token, ad_account_id, campaign_ids, columns_str, start_date, end_date)
+
+    # Verificar se o relatório foi criado com sucesso e obter o link de download
+    if token:
+        # Esperar um pouco para garantir que o relatório esteja pronto
+        time.sleep(30)  # Aumentar o tempo de espera para garantir que o relatório esteja pronto
+
+        download_link = get_report_download_link(access_token, ad_account_id, token)
+        if download_link:
+            # Fazer o download do arquivo JSON
+            response = requests.get(download_link)
+            if response.status_code == 200:
+                report_json = response.json()
+                print("Relatório baixado com sucesso")
+
+                # Processar o JSON e transformá-lo em um DataFrame
+                df = process_report_json(report_json)
+                print("Conteúdo do DataFrame:")
+                print(df.head())
+
+                # Carregar dados existentes (simulação)
+                existing_data = pd.DataFrame()  # Aqui você deve carregar os dados existentes do BigQuery
+
+                # Adicionar IDs aos dados novos
+                df_with_ids = add_ids_and_sort_data(df)
+
+                # Verificar e adicionar novos dados
+                updated_data = check_and_add_new_data(existing_data, df_with_ids)
+
+                # Inserir dados no BigQuery a partir do DataFrame
+                insert_df_to_bigquery(updated_data, project_id, dataset_id, table_id, credentials_path)
+            else:
+                print(f"Erro ao baixar o arquivo: {response.status_code}")
+        else:
+            print("Falha ao obter o link de download do relatório.")
+    else:
+        print("Falha ao criar o relatório.")
+
+if __name__ == "__main__":
+    main()
